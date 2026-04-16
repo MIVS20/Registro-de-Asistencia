@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de Asistencia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1f2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #e8e8f0; min-height: 100vh; }
+    .header { background: #1a1f2e; padding: 2rem 1.5rem 1.5rem; border-bottom: 1px solid #2a3044; }
+    .header h1 { font-size: 32px; font-weight: 800; color: #f0f0f8; line-height: 1.1; margin-bottom: 0.75rem; }
+    .header p { font-size: 15px; color: #8a8fa8; line-height: 1.6; margin-bottom: 0.75rem; }
+    .required-note { font-size: 14px; color: #e05a3a; font-weight: 500; }
+    .body { padding: 0 1.5rem 2rem; max-width: 700px; margin: 0 auto; }
+    .field { padding: 1.5rem 0; border-bottom: 1px solid #2a3044; }
+    .field-label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #4a6fa8; flex-shrink: 0; }
+    .field-label span { font-size: 16px; font-weight: 600; color: #e0e4f0; }
+    .field-label .ast { color: #e05a3a; font-size: 16px; font-weight: 700; }
+    .field-hint { font-size: 13px; color: #6a7090; margin-bottom: 10px; padding-left: 18px; }
+    input[type=text], input[type=date], input[type=time], select {
+      width: 100%; background: #252b3d; border: 1.5px solid #2e3550;
+      border-radius: 10px; padding: 14px 16px; font-size: 16px; color: #e0e4f0;
+      outline: none; transition: border-color 0.2s; -webkit-appearance: none; appearance: none;
+    }
+    input[type=date], input[type=time] { color-scheme: dark; }
+    input:focus, select:focus { border-color: #4a6fa8; }
+    input[readonly] { cursor: default; color: #8a9ac0; }
+    select option { background: #252b3d; }
+    .nuevo-nombre { margin-top: 10px; display: none; }
+    .nuevo-nombre.visible { display: flex; }
+    .gps-wrapper { display: flex; flex-direction: column; gap: 10px; }
+    .btn-gps { width: 100%; background: #3a4f7a; color: #c0d0f0; border: none; border-radius: 10px; padding: 14px 18px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-gps:hover { background: #4a6fa8; }
+    .btn-gps:disabled { opacity: 0.5; cursor: not-allowed; }
+    .gps-status { font-size: 13px; padding-left: 4px; min-height: 18px; }
+    .gps-ok { color: #5ccc5c; }
+    .gps-err { color: #e05a3a; }
+    .gps-loading { color: #6a7090; }
+    .status-box { margin-top: 10px; padding-left: 18px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-size: 15px; font-weight: 600; }
+    .badge-tiempo  { background: #1e3a1e; color: #5ccc5c; border: 1.5px solid #2d5a2d; }
+    .badge-retardo { background: #3a2e10; color: #f0a030; border: 1.5px solid #5a4818; }
+    .badge-falta   { background: #3a1a1a; color: #e05a3a; border: 1.5px solid #5a2a2a; }
+    .badge-pending { background: #252b3d; color: #6a7090; border: 1.5px solid #2e3550; font-weight: 400; font-size: 14px; }
+    .badge-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .btn-submit { width: 100%; background: #3a4f7a; color: #c0d0f0; border: none; border-radius: 10px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 1.5rem; transition: background 0.2s; }
+    .btn-submit:hover { background: #4a6fa8; }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .syncing { font-size: 12px; color: #6a7090; text-align: center; margin-top: 8px; min-height: 18px; }
+    .historial { margin-top: 1.5rem; background: #1e2435; border-radius: 12px; overflow: hidden; }
+    .hist-header { padding: 1rem 1.25rem; background: #252b3d; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2e3550; }
+    .hist-header h3 { font-size: 15px; font-weight: 700; color: #c0c8e0; }
+    .hist-count { font-size: 12px; color: #6a7090; }
+    .summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: #2e3550; }
+    .sum-cell { background: #1e2435; padding: 12px; text-align: center; }
+    .sum-num { font-size: 22px; font-weight: 700; }
+    .sum-lbl { font-size: 11px; color: #6a7090; margin-top: 2px; }
+    .num-verde { color: #5ccc5c; } .num-ambar { color: #f0a030; } .num-rojo { color: #e05a3a; }
+    .reg-list { padding: 0 1.25rem; }
+    .reg-item { padding: 12px 0; border-bottom: 1px solid #2a3044; display: flex; align-items: center; gap: 12px; }
+    .reg-item:last-child { border-bottom: none; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: #3a4f7a; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #a0b8e0; flex-shrink: 0; }
+    .reg-info { flex: 1; min-width: 0; }
+    .reg-nombre { font-size: 14px; font-weight: 600; color: #e0e4f0; }
+    .reg-meta { font-size: 12px; color: #6a7090; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .reg-right { text-align: right; flex-shrink: 0; }
+    .reg-hora { font-size: 14px; font-weight: 600; color: #c0c8e0; }
+    .empty { text-align: center; padding: 2rem; font-size: 14px; color: #4a5068; }
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 999; }
+    .toast.show { opacity: 1; }
+    .toast.ok  { background: #1e3a1e; color: #5ccc5c; border: 1px solid #2d5a2d; }
+    .toast.err { background: #3a1a1a; color: #e05a3a; border: 1px solid #5a2a2a; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Registro de Asistencia</h1>
+    <p>Completa el formulario para registrar tu llegada, ubicación y estado de asistencia del equipo.</p>
+    <div class="required-note">* Los campos marcados son obligatorios</div>
+  </div>
+
+  <div class="body">
+
+    <!-- MIEMBRO -->
+    <div class="field">
+      <div class="field-label"><div class="dot"></div><span>Miembro del equipo</span><span class="ast">*</span></div>
+      <div class="field-hint">Selecciona tu nombre de la lista.</div>
+      <select id="miembro" onchange="onMiembroChange()">
+        <option value="">-- Seleccionar miembro --</option>
+        <option>Norma</option>
+        <option>Juana</option>
+        <option>Margarita</option>
+        <option>Paula</option>
+        <option>Ana</option>
+        <option>Nahomi</option>
+        <option>Susana</option>
+        <option>Moises</option>
+        <option>Saday</option>
+        <option>Martha</option>
+        <option>Selene</option>
+        <option value="__nuevo__">+ Agregar nombre nuevo…</option>
+      </select>
+      <div class="nuevo-nombre" id="nuevoNombreRow">
+        <input type="text" id="nuevoNombre" placeholder="Escribe el nombre completo" />
+      </div>
+    </div>
+
+    <!-- FECHA -->
+    <div class="field">
+      <div class="field-label"><div class="dot"></div><span>Fecha</span><span class="ast">*</span></div>
+      <input type="date" id="fecha" />
+    </div>
+
+    <!-- HORA -->
+    <div class="field">
+      <div class="field-label"><div class="dot"></div><span>Hora de llegada</span><span class="ast">*</span></div>
+      <div class="field-hint">Registra la hora exacta de tu llegada.</div>
+      <input type="time" id="hora" oninput="updateStatus()" />
+    </div>
+
+    <!-- UBICACION GPS -->
+    <div class="field">
+      <div class="field-label"><div class="dot"></div><span>Ubicación</span><span class="ast">*</span></div>
+      <div class="field-hint">Presiona el botón para capturar tu ubicación actual por GPS.</div>
+      <div class="gps-wrapper">
+        <input type="text" id="ubicacion" readonly placeholder="Esperando GPS…" />
+        <button class="btn-gps" id="btnGps" onclick="usarGPS()">📍 Capturar ubicación con GPS</button>
+        <div class="gps-status" id="gpsStatus"></div>
+      </div>
+    </div>
+
+    <!-- ESTADO -->
+    <div class="field">
+      <div class="field-label"><div class="dot"></div><span>Estado de asistencia</span><span class="ast">*</span></div>
+      <div class="field-hint">Se determina automáticamente según la hora de llegada.</div>
+      <div class="status-box" id="statusBox">
+        <span class="status-badge badge-pending">— Ingresa la hora para ver el estado</span>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="btnSubmit" onclick="registrar()">Registrar asistencia</button>
+    <div class="syncing" id="syncMsg"></div>
+
+    <div class="historial">
+      <div class="hist-header">
+        <h3>Registros de esta sesión</h3>
+        <span class="hist-count" id="histCount">0 registros</span>
+      </div>
+      <div class="summary">
+        <div class="sum-cell"><div class="sum-num num-verde" id="cntT">0</div><div class="sum-lbl">A tiempo</div></div>
+        <div class="sum-cell"><div class="sum-num num-ambar" id="cntR">0</div><div class="sum-lbl">Retardo</div></div>
+        <div class="sum-cell"><div class="sum-num num-rojo" id="cntF">0</div><div class="sum-lbl">Falta</div></div>
+      </div>
+      <div class="reg-list" id="regList"><div class="empty">Aún no hay registros</div></div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfKSWL35-ieDPwUCowEAnvkWY0_9sAUPdfI23z8tBQd4bYgGKIbChcknBDCTOazvjn/exec';
+    const registros = [];
+
+    const fechaEl = document.getElementById('fecha');
+    const horaEl  = document.getElementById('hora');
+    const hoy = new Date();
+    fechaEl.value = hoy.toISOString().split('T')[0];
+    horaEl.value  = hoy.toTimeString().slice(0,5);
+    updateStatus();
+
+    function onMiembroChange() {
+      const sel = document.getElementById('miembro');
+      const row = document.getElementById('nuevoNombreRow');
+      if (sel.value === '__nuevo__') {
+        row.classList.add('visible');
+        document.getElementById('nuevoNombre').focus();
+      } else {
+        row.classList.remove('visible');
+        document.getElementById('nuevoNombre').value = '';
+      }
+    }
+
+    function getMiembro() {
+      const sel = document.getElementById('miembro');
+      if (sel.value === '__nuevo__') return document.getElementById('nuevoNombre').value.trim();
+      return sel.value;
+    }
+
+    function calcEstado(h) {
+      if (!h) return null;
+      const [hh, mm] = h.split(':').map(Number);
+      const t = hh * 60 + mm;
+      if (t <= 9*60+15) return 'a-tiempo';
+      if (t < 12*60)    return 'retardo';
+      return 'falta';
+    }
+
+    function estadoLabel(e) {
+      return e === 'a-tiempo' ? 'Presente a tiempo' : e === 'retardo' ? 'Presente con retardo' : 'Falta';
+    }
+
+    function updateStatus() {
+      const estado = calcEstado(horaEl.value);
+      const box = document.getElementById('statusBox');
+      if (!estado) {
+        box.innerHTML = '<span class="status-badge badge-pending">— Ingresa la hora para ver el estado</span>';
+        return;
+      }
+      const cfg = {
+        'a-tiempo': { cls: 'badge-tiempo',  dot: '#5ccc5c' },
+        'retardo':  { cls: 'badge-retardo', dot: '#f0a030' },
+        'falta':    { cls: 'badge-falta',   dot: '#e05a3a' }
+      }[estado];
+      box.innerHTML = `<span class="status-badge ${cfg.cls}"><span class="badge-dot" style="background:${cfg.dot}"></span>${estadoLabel(estado)}</span>`;
+    }
+
+    function usarGPS() {
+      const btn    = document.getElementById('btnGps');
+      const status = document.getElementById('gpsStatus');
+      const input  = document.getElementById('ubicacion');
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Obteniendo ubicación…';
+      status.textContent = 'Solicitando acceso al GPS…';
+      status.className = 'gps-status gps-loading';
+
+      if (!navigator.geolocation) {
+        status.textContent = 'GPS no disponible en este dispositivo.';
+        status.className = 'gps-status gps-err';
+        btn.disabled = false;
+        btn.textContent = '📍 Capturar ubicación con GPS';
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lng = pos.coords.longitude.toFixed(6);
+          const acc = Math.round(pos.coords.accuracy);
+          input.value = `${lat}, ${lng}`;
+          status.textContent = `✓ Ubicación capturada (precisión ±${acc}m)`;
+          status.className = 'gps-status gps-ok';
+          btn.textContent = '✓ Recapturar ubicación';
+          btn.disabled = false;
+        },
+        err => {
+          let msg = 'No se pudo obtener la ubicación.';
+          if (err.code === 1) msg = 'Permiso denegado. Activa la ubicación en tu navegador.';
+          if (err.code === 3) msg = 'Tiempo agotado. Intenta de nuevo.';
+          status.textContent = msg;
+          status.className = 'gps-status gps-err';
+          btn.textContent = '📍 Reintentar GPS';
+          btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    function showToast(msg, type = 'ok') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast ${type} show`;
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    async function registrar() {
+      const miembro   = getMiembro();
+      const fecha     = fechaEl.value;
+      const hora      = horaEl.value;
+      const ubicacion = document.getElementById('ubicacion').value.trim();
+
+      if (!miembro)   { showToast('Selecciona o escribe un miembro del equipo', 'err'); return; }
+      if (!fecha)     { showToast('Ingresa la fecha', 'err'); return; }
+      if (!hora)      { showToast('Ingresa la hora de llegada', 'err'); return; }
+      if (!ubicacion) { showToast('Captura tu ubicación con GPS antes de registrar', 'err'); return; }
+
+      const estado  = calcEstado(hora);
+      const payload = { miembro, fecha, hora, ubicacion, estado: estadoLabel(estado) };
+
+      const btn  = document.getElementById('btnSubmit');
+      const sync = document.getElementById('syncMsg');
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+      sync.textContent = 'Enviando a Google Sheets…';
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const sel = document.getElementById('miembro');
+        if (sel.value === '__nuevo__') {
+          const opt = document.createElement('option');
+          opt.value = miembro; opt.textContent = miembro;
+          sel.insertBefore(opt, sel.querySelector('option[value="__nuevo__"]'));
+          document.getElementById('nuevoNombreRow').classList.remove('visible');
+          document.getElementById('nuevoNombre').value = '';
+          sel.value = miembro;
+        }
+
+        registros.unshift({ ...payload, estado });
+        renderLista();
+        showToast('✓ Asistencia registrada correctamente', 'ok');
+        sync.textContent = '✓ Guardado en Google Sheets';
+
+        sel.value = '';
+        document.getElementById('ubicacion').value = '';
+        document.getElementById('gpsStatus').textContent = '';
+        document.getElementById('gpsStatus').className = 'gps-status';
+        document.getElementById('btnGps').textContent = '📍 Capturar ubicación con GPS';
+        updateStatus();
+
+      } catch (err) {
+        showToast('Error al conectar con Google Sheets', 'err');
+        sync.textContent = 'Error de conexión, intenta de nuevo';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Registrar asistencia';
+        setTimeout(() => sync.textContent = '', 4000);
+      }
+    }
+
+    function fmtFecha(f) {
+      if (!f) return '';
+      const [y, m, d] = f.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function renderLista() {
+      const list = document.getElementById('regList');
+      document.getElementById('histCount').textContent =
+        `${registros.length} registro${registros.length !== 1 ? 's' : ''}`;
+      document.getElementById('cntT').textContent = registros.filter(r => r.estado === 'a-tiempo').length;
+      document.getElementById('cntR').textContent = registros.filter(r => r.estado === 'retardo').length;
+      document.getElementById('cntF').textContent = registros.filter(r => r.estado === 'falta').length;
+      if (!registros.length) { list.innerHTML = '<div class="empty">Aún no hay registros</div>'; return; }
+      const colors = { 'a-tiempo': '#5ccc5c', 'retardo': '#f0a030', 'falta': '#e05a3a' };
+      list.innerHTML = registros.map(r => `
+        <div class="reg-item">
+          <div class="avatar">${r.miembro.slice(0,2).toUpperCase()}</div>
+          <div class="reg-info">
+            <div class="reg-nombre">${r.miembro}</div>
+            <div class="reg-meta">${fmtFecha(r.fecha)} · <span style="color:${colors[r.estado]}">${estadoLabel(r.estado)}</span></div>
+            <div class="reg-meta">${r.ubicacion}</div>
+          </div>
+          <div class="reg-right"><div class="reg-hora">${r.hora}</div></div>
+        </div>
+      `).join('');
+    }
+
+    renderLista();
+  </script>
+
+</body>
+</html>
